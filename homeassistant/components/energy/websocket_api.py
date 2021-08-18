@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import functools
-from typing import Any, Awaitable, Callable, Dict, cast
+from types import ModuleType
+from typing import Any, Awaitable, Callable, cast
 
 import voluptuous as vol
 
@@ -22,13 +23,14 @@ from .data import (
     EnergyPreferencesUpdate,
     async_get_manager,
 )
+from .types import EnergyPlatform, GetSolarForecastType
 
 EnergyWebSocketCommandHandler = Callable[
-    [HomeAssistant, websocket_api.ActiveConnection, Dict[str, Any], "EnergyManager"],
+    [HomeAssistant, websocket_api.ActiveConnection, "dict[str, Any]", "EnergyManager"],
     None,
 ]
 AsyncEnergyWebSocketCommandHandler = Callable[
-    [HomeAssistant, websocket_api.ActiveConnection, Dict[str, Any], "EnergyManager"],
+    [HomeAssistant, websocket_api.ActiveConnection, "dict[str, Any]", "EnergyManager"],
     Awaitable[None],
 ]
 
@@ -43,18 +45,20 @@ def async_setup(hass: HomeAssistant) -> None:
 
 
 @singleton("energy_platforms")
-async def async_get_energy_platforms(hass: HomeAssistant) -> dict[str, Any]:
+async def async_get_energy_platforms(
+    hass: HomeAssistant,
+) -> dict[str, GetSolarForecastType]:
     """Get energy platforms."""
-    platforms = {}
+    platforms: dict[str, GetSolarForecastType] = {}
 
     async def _process_energy_platform(
-        hass: HomeAssistant, domain: str, platform: Any
+        hass: HomeAssistant, domain: str, platform: ModuleType
     ) -> None:
         """Process energy platforms."""
         if not hasattr(platform, "async_get_solar_forecast"):
             return
 
-        platforms[domain] = platform.async_get_solar_forecast
+        platforms[domain] = cast(EnergyPlatform, platform).async_get_solar_forecast
 
     await async_process_integration_platforms(hass, DOMAIN, _process_energy_platform)
 
